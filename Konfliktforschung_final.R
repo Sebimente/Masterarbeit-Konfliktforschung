@@ -69,7 +69,7 @@ library(devtools)
 library(ICPSurv)
 library(arm)
 library(rstanarm)
-library(statisticalModeling)
+#library(statisticalModeling)
 library(corrplot)
 #library(safeBinaryRegression) ### keine logistische Regression funktioniert wenn das Package aktiviert ist
 ###################################### Datensätz einlesen
@@ -217,10 +217,10 @@ colnames(Expected_years_of_schooling_male_years_)<- Expected_years_of_schooling_
 Expected_years_of_schooling_male_years_<- Expected_years_of_schooling_male_years_[-1,]
 
 
-col.num2<- c("2017","2018","2019")
-Expected_years_of_schooling_years_[col.num2] <- sapply(Expected_years_of_schooling_years_[col.num2],as.character)
 colnames(Expected_years_of_schooling_years_)<- Expected_years_of_schooling_years_[1,]
 Expected_years_of_schooling_years_<- Expected_years_of_schooling_years_[-1,]
+col.num2<- c("1990","1991","1992","1993","1994","1995","1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019")
+Expected_years_of_schooling_years_[col.num2] <- sapply(Expected_years_of_schooling_years_[col.num2],as.character)
 
 colnames(Labour_force_participation_rate_ages_15_and_older_female)<- Labour_force_participation_rate_ages_15_and_older_female[1,]
 Labour_force_participation_rate_ages_15_and_older_female<- Labour_force_participation_rate_ages_15_and_older_female[-1,]
@@ -476,7 +476,7 @@ demographie_pivot <- Demographie %>%
     names_transform = list(Year= as.integer),
     values_drop_na = TRUE
   )%>%
-  pivot_wider(c(names_from = c("Series Code"), values_from = "value"))
+  pivot_wider(names_from = c("Series Code"), values_from = "value")
 
 Im_Ex_pivot <- In_Ex%>%
   pivot_longer(
@@ -679,8 +679,16 @@ setnames(GDI_pivot, old= "Country", new = "Country Name")
 setnames(Inequ_adjHDI_pivot, old= "Country", new = "Country Name")
 setnames(Im_Ex_pivot, old = "Country", new = "CountryCode")
 
+#### Country Codes und weitere Attribute aus dem cartography Packet
+countries_sf <- ne_countries(returnclass = "sf")
+## Vorbereitung einer Karte
+countries_sf %>%
+  ggplot() +
+  geom_sf()
+
 
 ###################################### Zusammenfügen der Datensätze in einen großen Datensatz, in dem jeder Konflikt eine Zeile hat
+
 
 wdi_sf <- left_join(Wdi_pivot,countries_sf, by= c("Country Code" = "iso_a3")) ## erste WDI-Daten mit ökonomischen und räumlichen Regionen verknüpfen.
 wdi_Gov<- left_join(wdi_sf,Governance_pivot, by= c("Year", "Country Code")) ## Governance Indikatoren hinzufügen
@@ -702,7 +710,7 @@ HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef <- left_join(HDI_GII_EDI_GNI
 HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef_Im_Ex <- left_join(HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef, Im_Ex_pivot,by = c("Year","Country Code")) ## Import Export Verhältnis
 HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef_Im_Ex_Demographie <- left_join(HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef_Im_Ex,demographie_pivot, by = c("Year","Country Code")) ## Demographie daten hizufügen
 HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef_Im_Ex_Demographie_fip <- left_join(HDI_GII_EDI_GNI_Dem_Invest_Gov_GDI_adjHDI_Ineq_Coef_Im_Ex_Demographie, F_i_p_pivot, by= c("Year","Country Code")) ## Frauen im Parlament
-
+## eine andere und schnellere Art Indicatoren in einen Datensatz zu fusionieren
 df_list<- list(mean_years_schooling,
                Adolescent_birth_rate,
                GNI_per_capita_male,
@@ -1099,7 +1107,7 @@ logLik(Data_logit_reg) ### was bedeutet -97.?? ->
 
 ### auf Multikollinearität testen
 vif(Data_logit_reg) # größer als 10 zeigt Multikollinearität
-1/vif(Data_logit_gen) #  kleiner als 0.1 zeigt Multikollinearität
+1/vif(Data_logit_reg) #  kleiner als 0.1 zeigt Multikollinearität
 
 ##Pseudo R²
 nagelkerke(Data_logit_reg)
@@ -1496,7 +1504,7 @@ data_cor_merge$Konflikt<-as.numeric(as.factor(data_cor_merge$Konflikt))
 data_cor_merge$NY.GDP.PCAP.CN<- log(data_cor_merge$NY.GDP.PCAP.CN)
 data_cor_merge$EN.POP.DNST<- log(data_cor_merge$EN.POP.DNST)
 data_cor_merge$SP.ADO.TFRT<- log(data_cor_merge$SP.ADO.TFRT)
-data_cor_merge$Im_Ex<- log(data_cor_merge$Im_Ex)
+#data_cor_merge$Im_Ex<- log(data_cor_merge$Im_Ex)
 
 # Durchführung der ICP
 
@@ -1515,8 +1523,8 @@ ExpInd_sel_new <- data_cor_merge%>%
 
 
 
-XY<-InvariantCausalPrediction::ICP(X=X_sel_new,Y=Y_sel_new,ExpInd= ExpInd_sel_new)
-summary(XY) #-> nur der Anteil der urbanen Bevölkerung hat einen signifikanten kausalen Zusammenhang mit dem Auftreten von Konflikten
+ICP2ev<-InvariantCausalPrediction::ICP(X=X_sel_new,Y=Y_sel_new,ExpInd= ExpInd_sel_new)
+summary(ICP2ev) #-> nur der Anteil der urbanen Bevölkerung hat einen signifikanten kausalen Zusammenhang mit dem Auftreten von Konflikten
 
 
 ### Für die beiden Environments werden logistische Regressionen durchgeführt
@@ -2095,4 +2103,11 @@ GII_map <- data_map %>%
   theme_minimal()
 GII_map
 
-
+Demokratieaufregio <- Stat_Data_geo%>%
+  filter(region_wb==c("Sub-Saharan Africa","Europe & Central Asia","Middle East & North Africa"))%>%
+  ggplot(aes(fill= Konflikt, y= total_index_core, x = region_wb))+
+  geom_violin()+
+  scale_fill_viridis_d("Konflikte")+
+  labs(x="Region (World Bank)", y="Demokratieindex")+
+  theme_minimal()
+Demokratieaufregio
